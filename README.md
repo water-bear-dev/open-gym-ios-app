@@ -2,10 +2,14 @@
 
 <img src="assets/banner.png" alt="openGym" width="720">
 
-**A self-hosted gym and body-weight tracker you actually own.**
+**openGym as a native iOS app** (Capacitor shell on iPhone).
+
+This copy of [openGym](https://github.com/DuarteSantos8/openGym) is for building and running the
+standalone iPhone app locally with Xcode. Same training app — plan, guided workouts, set logging,
+body weight — wrapped for iOS. It is not on the App Store.
 
 Plan your week, run guided workouts, log every set and your body weight,<br>
-on your phone, synced across your devices, behind your own passkey login.
+on your phone. Data can stay on the device, or you can pair the app to your own server.
 
 [![Discord](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fdiscord.com%2Fapi%2Finvites%2Fe62jY6fwVb%3Fwith_counts%3Dtrue&query=%24.approximate_member_count&suffix=%20members&label=Discord&logo=discord&logoColor=white&color=5865F2&style=for-the-badge)](https://discord.gg/e62jY6fwVb)
 [![Online](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fdiscord.com%2Fapi%2Finvites%2Fe62jY6fwVb%3Fwith_counts%3Dtrue&query=%24.approximate_presence_count&suffix=%20online&label=&logo=discord&logoColor=white&color=3BA55C&style=for-the-badge)](https://discord.gg/e62jY6fwVb)
@@ -123,13 +127,75 @@ if you want to try it before installing anything.
 
 The full list of what changed release by release is in the [changelog](CHANGELOG.md).
 
-## Quick start
+## Quick start — iOS app on your Mac
+
+There is no App Store build. Recreate the native iPhone app on a Mac and install it with Xcode.
+
+### What you need
+
+- A Mac with **Xcode 15+** (this copy was last built with Xcode 27) and Command Line Tools
+- **CocoaPods** (`brew install cocoapods`)
+- **Node 20+**
+- A free **Apple ID** added in Xcode → Settings → Accounts
+- An iPhone on **iOS 15.5+**, USB cable, and **Developer Mode** on (iOS 16+: Settings → Privacy & Security → Developer Mode)
+
+A paid Apple Developer Program membership is not required. Free signing expires after about **7 days**; open the same Xcode workspace and Product → Run to renew.
+
+### Clone, build, open Xcode
+
+```bash
+git clone https://github.com/water-bear-dev/open-gym-ios-app.git
+cd open-gym-ios-app
+cd frontend
+npm install
+npm run build:mobile        # VITE_MOBILE=1 build + cap sync into ios/
+npx cap open ios            # opens App.xcworkspace — not the bare .xcodeproj
+```
+
+`npm run build:mobile` builds the mobile web bundle, copies it into `frontend/ios/App/App/public`, and runs `pod install`. Re-run it after every frontend change before you Run in Xcode.
+
+The Xcode workspace is:
+
+```text
+frontend/ios/App/App.xcworkspace
+```
+
+### Sign and install on your iPhone
+
+1. Select the **App** target → **Signing & Capabilities**.
+2. Enable **Automatically manage signing**.
+3. Team: your **Personal Team** (the free Apple ID).
+4. Change **Bundle Identifier** to something unique you own, for example `com.yourname.opengym`. The upstream id `ch.duartesantos.opengym` will fail on a personal team. Keep that change local; do not commit it.
+5. Choose your plugged-in iPhone as the run destination.
+6. Product → **Run**.
+
+First install on the phone:
+
+- If Xcode says the developer is untrusted: iPhone → Settings → General → VPN & Device Management → trust your Apple ID.
+- Allow notifications if prompted (workout-day reminders). Camera and microphone are only needed later for QR codes or custom exercise media.
+
+### First launch
+
+The app asks **How do you want to use openGym?**
+
+- **Use on this device** — local-only. The phone is the account; nothing talks to a server. This is the usual first run.
+- **Connect to my server** — pair to a self-hosted openGym instance (see [docs/MOBILE.md](docs/MOBILE.md)). Passkeys do not work inside the app WebView; pairing uses a one-time code from a signed-in browser.
+
+After a local-only session, force-quit and reopen once: workouts are mirrored to `opengym-state.json` in the app’s private storage because iOS can evict WebView `localStorage`.
+
+> **Heads-up:** after `build:mobile`, `frontend/dist` is the *mobile* bundle. Run a plain `npm run build` before deploying `dist` to a web server.
+
+More detail (pairing, CORS, AltStore): [docs/MOBILE.md](docs/MOBILE.md).
+
+## Self-hosted web app (optional)
+
+The same repo still runs the original Docker stack if you want the browser PWA as well.
 
 You need [Docker](https://docs.docker.com/get-docker/) with Compose.
 
 ```bash
-git clone https://github.com/DuarteSantos8/openGym
-cd openGym
+git clone https://github.com/water-bear-dev/open-gym-ios-app.git
+cd open-gym-ios-app
 cp .env.example .env
 docker compose pull      # prebuilt images, amd64 + arm64 (skip this to build from source)
 docker compose up -d
@@ -183,18 +249,13 @@ variable. The [self-hosting guide](docs/SELF_HOSTING.md) covers every option in 
 
 </details>
 
-## Phone app
+## What the iOS app is
 
-The same codebase builds a standalone app with Capacitor: no account, no server, everything stays
-on the phone, with native reminders and a rest countdown in the notification shade.
+This is not a SwiftUI rewrite. `frontend/ios/` is a thin Capacitor shell (`AppDelegate`, `SceneDelegate`) around the React app. Native plugins cover the filesystem, local notifications, share sheet, secure storage, and barcode scanning.
 
-- **Android:** download the signed APK from the [latest release](https://github.com/DuarteSantos8/openGym/releases/latest)
-  or the [website](https://opengym.ch). Each build sits next to its `.sha256`, and
-  the app checks for updates itself. openGym is deliberately not on the Play Store.
-- **iPhone:** Apple doesn't allow installs outside the App Store. Self-host and add the PWA to your
-  home screen from Safari, or build the native app onto your own device with Xcode.
+On iPhone the default is **local-only**: no sign-in screen, no telemetry. You can later connect the same app to a self-hosted server from Settings.
 
-Details and build instructions: [docs/MOBILE.md](docs/MOBILE.md).
+The upstream project also ships an **Android** APK ([releases](https://github.com/DuarteSantos8/openGym/releases/latest)); this repo’s goal is the iOS Xcode path above.
 
 ## How it works
 
@@ -257,7 +318,7 @@ The [documentation index](docs/README.md) sorts every guide by who it's for. The
 |---|---|
 | Get a quick answer | [FAQ](docs/FAQ.md) |
 | Set up my own instance | [Self-hosting](docs/SELF_HOSTING.md) |
-| Use the Android or iPhone app | [Phone app](docs/MOBILE.md) |
+| Build the iPhone app locally | [iOS quick start](#quick-start--ios-app-on-your-mac) and [Phone app](docs/MOBILE.md) |
 | Bring my history from another app | [Importing data](docs/DATA_IMPORTS.md) |
 | Turn on the AI coach | [AI coach](docs/AI_COACH.md) |
 | Contribute code | [Contributing](CONTRIBUTING.md) |
